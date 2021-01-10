@@ -7,6 +7,8 @@ class Door extends Entity {
 	public var isClosed(default,null) : Bool;
 	public var needKey : Bool;
 
+	var willChangeWhenLeft = false;
+
 	public function new(e:Entity_Door) {
 		super(e.cx, e.cy);
 		ALL.push(this);
@@ -14,8 +16,16 @@ class Door extends Entity {
 		gravityMul = 0;
 		needKey = data.f_needKey;
 		darkMode = GoOutOfGame;
-		setClosed(true);
+		setDefaultState();
 		Game.ME.scroller.add(spr, Const.DP_BG);
+	}
+
+	public function setDefaultState() {
+		setClosed( data.f_startClosed );
+	}
+
+	public function isInDefaultState() {
+		return isClosed == data.f_startClosed;
 	}
 
 	public function setClosed(closed:Bool) {
@@ -24,8 +34,10 @@ class Door extends Entity {
 
 		isClosed = closed;
 
-		if( isClosed )
+		if( isClosed ) {
+			sprScaleX = 1;
 			setSquashX(0.7);
+		}
 		else
 			setSquashY(0.7);
 
@@ -51,16 +63,39 @@ class Door extends Entity {
 		ALL.remove(this);
 	}
 
+	override function onDark() {
+		super.onDark();
+		willChangeWhenLeft = false;
+	}
+
 	override function update() {
 		super.update();
 
 		if( needKey && isClosed ) {
-			for(e in en.Item.ALL)
-				if( distCase(e)<=1 && e.type==DoorKey && e.cd.has("recentThrow") && !e.isGrabbedByHero() ) {
+			for(e in en.Item.ALL) {
+				if( !e.isAlive() || e.type!=DoorKey || !e.isGrabbedByHero() && !e.cd.has("recentThrow") )
+					continue;
+
+				if( !e.isGrabbedByHero() && distCase(e)<=1.4 || e.isGrabbedByHero() && distCase(e)<=1.2 ) {
 					e.destroy();
+					fx.doorOpen(footX, footY, hero.dirTo(this));
+					sprScaleX = hero.dirTo(this);
 					Assets.SLIB.door0(1);
 					setClosed(false);
+					game.popText(headX, headY, "Used key");
 				}
+			}
+		}
+
+		if( !game.dark && data.f_autoChangeWhenPassThrough ) {
+			if( hero.cx==cx && ( hero.cy>=cy-1 && hero.cy<=cy ) ) {
+				willChangeWhenLeft = true;
+			}
+			else if( willChangeWhenLeft && M.fabs(hero.cx-cx)>1 ) {
+				willChangeWhenLeft = false;
+				Assets.SLIB.door0(1);
+				setClosed( !isClosed );
+			}
 		}
 	}
 }

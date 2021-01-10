@@ -194,30 +194,49 @@ class Fx extends dn.Process {
 		}
 	}
 
-	public function torchSparks(x:Float, y:Float) {
+	public function torchIgnition(uid:Int, x:Float, y:Float, pow:Float) {
 		// Flame red
-		for(i in 0...1) {
-			var p = allocBgAdd(getTile("pixel"), x+rnd(0,2,true), y+rnd(0,1,true));
-			p.colorize(0xff9200);
-			// p.colorize(C.interpolateInt(0xbb3572,0x871d1d, 1-pow));
-			p.alphaFlicker = 0.5;
-			p.setFadeS(rnd(0.1,0.6), 0, 0.06);
-			p.frict = rnd(0.86,0.96);
-			p.lifeS = 0.1;
-			p.dy = -rnd(0.5,1);
-			p.gy = rnd(0.1,0.2);
+		for(i in 0...3) {
+			var a = uid*0.4 + ftime*0.2 + i*rnd(0.1,0.5,true);
+			var d = 1 + rnd(20,26) * (1-pow);
+			var p = allocBgAdd(getTile("fxLine"), x+Math.cos(a)*d, y+Math.sin(a)*d);
+			// p.setCenterRatio(0.8,0.5);
+			p.colorAnimS(0xff6600, 0xffcc00, rnd(0.1,0.2));
+			p.setFadeS(rnd(0.6,0.8)*pow, 0, 0.2);
+			p.scaleX = 0.04 + pow*0.1;
+
+			p.moveAng(a+M.PI, rnd(0.8,0.9));
+			p.frict = rnd(0.86,0.89);
+			p.rotation = a + M.PIHALF + 0.5*pow;
+
+			p.delayS = rnd(0,0.03);
+			p.lifeS = 0.2;
 		}
 	}
 
 	public function torchLightOn(x:Float, y:Float) {
-		var p = allocBgAdd(getTile("fxStar"), x,y);
+		var p = allocTopAdd(getTile("fxStar"), x,y);
 		p.colorize(0xffe600);
-		p.setFadeS(rnd(0.5,0.8), 0, 0.1);
-		p.setScale(rnd(2,3));
+		p.setFadeS(rnd(0.5,0.8), 0, 0.2);
+		p.setScale(rnd(3,4));
 		p.rotation = rnd(0,M.PI);
 		p.dr = 0.3;
-		p.scaleMul = rnd(0.9, 0.95);
-		p.lifeS = rnd(0.2,0.6);
+		p.scaleMul = rnd(0.97, 0.98);
+		p.lifeS = rnd(0.4,0.6);
+	}
+
+	public function doorOpen(x:Float, y:Float, openDir:Int) {
+		for(i in 0...30) {
+			var p = allocBgAdd(getTile("fxLine"), x+rnd(1,4)*openDir, y-rnd(0.2,1.5)*Const.GRID);
+			p.setFadeS(rnd(0.2,0.5), 0, 0.1);
+			p.colorize(0xcd6438);
+			p.scaleX = rnd(0.3,0.6);
+			p.scaleXMul = rnd(0.94,0.97);
+			p.dx = rnd(0.3,3)*openDir;
+			p.frict = rnd(0.92,0.95);
+			p.rotation = M.PIHALF;
+			p.lifeS = rnd(0.2,0.6);
+		}
 	}
 
 	public function torchFlame(x:Float, y:Float, pow:Float) {
@@ -239,6 +258,20 @@ class Fx extends dn.Process {
 		p.setFadeS(0.05*pow, 0.2, 0.6);
 		p.setScale(rnd(2,3,true) * (0.5+0.5*pow));
 		p.lifeS = rnd(0.2,0.3);
+
+		// End sparks
+		if( pow>0 && pow<=0.2 )
+			for(_ in 0...2) {
+				var p = allocBgAdd(getTile("pixel"), x+rnd(0,2,true), y+rnd(0,1,true));
+				p.colorize(0xff9200);
+				// p.colorize(C.interpolateInt(0xbb3572,0x871d1d, 1-pow));
+				p.setFadeS(rnd(0.3,0.6), 0.08, 0.1);
+				p.frict = rnd(0.86,0.96);
+				p.lifeS = rnd(0.1,0.2);
+				p.gy = -rnd(0.1,0.3);
+
+			}
+
 
 		// Smoke
 		for(i in 0...8) {

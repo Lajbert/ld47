@@ -17,6 +17,7 @@ class Level extends dn.Process {
 	var walls : h2d.TileGroup;
 	var bg : h2d.TileGroup;
 	var dark : h2d.TileGroup;
+	var customs : h2d.TileGroup;
 	public var burn : h2d.TileGroup;
 	var extraCollMap : Map<Int,Bool> = new Map();
 
@@ -41,6 +42,8 @@ class Level extends dn.Process {
 		bg = new h2d.TileGroup(tilesetSource, lightWrapper);
 		walls = new h2d.TileGroup(tilesetSource, lightWrapper);
 		details = new h2d.TileGroup(Assets.tiles.tile, lightWrapper);
+
+		customs = new h2d.TileGroup(Assets.tiles.tile, root);
 
 		burn = new h2d.TileGroup(tilesetSource, lightWrapper);
 		burn.blendMode = Add;
@@ -82,27 +85,21 @@ class Level extends dn.Process {
 		game.hero.dy = -0.1;
 
 
-		if( level.l_Entities.all_Vortex!=null ) // BUG
 		for(e in level.l_Entities.all_Vortex)
 			new en.Vortex(e);
 
-		if( level.l_Entities.all_Text!=null ) // BUG
 		for(e in level.l_Entities.all_Text)
 			new en.Text(e);
 
-		if( level.l_Entities.all_Vault!=null ) // BUG
 		for(e in level.l_Entities.all_Vault)
 			new en.Vault(e);
 
-		if( level.l_Entities.all_Trigger!=null ) // BUG
 		for(e in level.l_Entities.all_Trigger)
 			new en.Trigger(e);
 
-		if( level.l_Entities.all_Door!=null ) // BUG
 		for(e in level.l_Entities.all_Door)
 			new en.Door(e);
 
-		if( level.l_Entities.all_Item!=null ) // BUG
 		for( e in level.l_Entities.all_Item ) {
 			if( e.f_type==Diamond )
 				new en.Item(e.cx, e.cy, e.f_type);
@@ -110,29 +107,39 @@ class Level extends dn.Process {
 	}
 
 	public function attachLightEntities() {
-		if( level.l_Entities.all_Torch!=null ) // BUG
 		for( e in level.l_Entities.all_Torch )
 			new en.Torch(e);
 
-		if( level.l_Entities.all_Mob!=null ) // BUG
 		for( e in level.l_Entities.all_Mob )
 			new en.Mob(e);
 
-		if( level.l_Entities.all_Item!=null ) // BUG
 		for( e in level.l_Entities.all_Item )
 			switch e.f_type {
-				case Diamond: continue;
+				case Diamond:
+					var found = false;
+					for(ee in en.Item.ALL)
+						if( ee.origin!=null && ee.origin.cx==e.cx && ee.origin.cy==e.cy ) {
+							found = true;
+							break;
+						}
+					if( !found )
+						new en.Item(e.cx, e.cy, DiamondDup);
+
 				case _: new en.Item(e.cx, e.cy, e.f_type);
 			}
 	}
 
 	override function onDispose() {
 		super.onDispose();
+
 		level = null;
 		marks = null;
+
 		tilesetSource.dispose();
 		tilesetSource = null;
+
 		front.remove();
+		customs.remove();
 	}
 
 	/**
@@ -220,6 +227,20 @@ class Level extends dn.Process {
 		dark.clear();
 		details.clear();
 		front.clear();
+		customs.clear();
+
+		// Custom tiles
+		for(e in level.l_Entities.all_CustomTile) {
+			if( e.f_tileId==null || !Assets.tiles.exists(e.f_tileId) ) {
+				trace("WARNING: unknown customTile: "+e.f_tileId);
+				continue;
+			}
+			customs.add(
+				e.pixelX, e.pixelY,
+				Assets.tiles.getTile(e.f_tileId,0, e.f_pivotX, e.f_pivotY)
+			);
+		}
+
 
 		// Entrance gate
 		var e = level.l_Entities.all_Hero[0];

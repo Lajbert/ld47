@@ -48,9 +48,9 @@ class Game extends Process {
 
 		scroller = new h2d.Layers();
 		root.add(scroller, Const.DP_BG);
-		scroller.filter = new h2d.filter.ColorMatrix(); // force rendering for pixel perfect
+		scroller.filter = new h2d.filter.Nothing();
 
-		world = new World( hxd.Res.world.world.entry.getText() );
+		world = new World( hxd.Res.world.world_ldtk.entry.getText() );
 		camera = new Camera();
 		fx = new Fx();
 		hud = new ui.Hud();
@@ -65,7 +65,20 @@ class Game extends Process {
 		root.add(darkHalo,Const.DP_TOP);
 		darkHalo.alpha = 0.;
 
+		#if debug
+		startLevel(3);
+		#else
 		startLevel(0);
+		#end
+
+		#if debug
+		var tf = new h2d.Text(Assets.fontPixel,Boot.ME.s2d);
+		tf.scale(4);
+		createChildProcess((p)->{
+			if( !p.cd.hasSetS("fps",0.1) )
+				tf.text = "" + Std.int( hxd.Timer.fps() );
+		});
+		#end
 	}
 
 
@@ -83,6 +96,37 @@ class Game extends Process {
 
 	public function nextLevel() {
 		startLevel(curLevelIdx+1);
+	}
+
+	public function notify(str:String, col=0x889fcd) {
+		var f = new h2d.Flow();
+		root.add(f, Const.DP_UI);
+		var tf = new h2d.Text(Assets.fontPixel, f);
+		tf.scale(Const.SCALE*2);
+		tf.text = str;
+		tf.textColor = col;
+		f.x = Std.int( w()*0.5 - f.outerWidth*0.5 );
+		f.y = Std.int( h()*0.4 - f.outerHeight*0.5 );
+
+		tw.createMs(f.alpha, 0>1, 400);
+		tw.createMs(tf.x, w()*0.5 > 0, TEaseOut, 200).end( ()->{
+			tw.createMs(tf.x, 1000 | -w()*0.5, TEaseIn, 200).end( ()->{
+				f.remove();
+			});
+		});
+	}
+
+	public function popText(x:Float, y:Float, str:String, col=0xffcc00) {
+		var f = new h2d.Flow();
+		scroller.add(f, Const.DP_UI);
+		var tf = new h2d.Text(Assets.fontPixel, f);
+		tf.text = str;
+		tf.textColor = col;
+		f.x = Std.int( x - f.outerWidth*0.5 );
+		f.y = Std.int( y - f.outerHeight*0.5 );
+
+		tw.createMs(f.alpha, 1>0, 1200).end( f.remove );
+		tw.createMs(f.y, f.y-20, TEaseOut, 200);
 	}
 
 	function startLevel(idx=-1, ?data:World_Level) {
@@ -114,6 +158,7 @@ class Game extends Process {
 
 		camera.trackTarget(hero, true);
 		Process.resizeAll();
+		hxd.Timer.skip();
 	}
 
 	/**
@@ -126,7 +171,7 @@ class Game extends Process {
 		Called when LDtk world changes on the disk, if hot-reloading is enabled in Boot.hx
 	**/
 	public function onLedReload() {
-		world.parseJson( hxd.Res.world.world.entry.getText() );
+		world.parseJson( hxd.Res.world.world_ldtk.entry.getText() );
 		startLevel(curLevelIdx);
 	}
 
@@ -152,25 +197,26 @@ class Game extends Process {
 			level.burn.visible = false;
 		else {
 			if( dark ) {
-				camera.shakeS(2, 0.5);
-				// Black effect
-				// darkMask.visible = true;
-				// darkMask.scaleX = w();
-				// darkMask.scaleY = h();
-				// tw.createMs(darkMask.alpha, 0.7>0, 2000, TEaseInt);
+				notify("Looped back in time...");
+				camera.shakeS(0.3, 0.7);
 				tw.createMs(camera.zoom, 1>1.2, 1500, TEase);
 			}
 			else {
 				// Super bright effect
+				notify("Try again!", 0xffcc00);
 				tw.terminateWithoutCallbacks(darkMask.alpha);
 				darkMask.visible = false;
 				level.burn.visible = true;
 				tw.createMs(level.burn.alpha, 0.5>0, 1000, TEaseIn);
 				fx.flashBangS(0xffcc00, 0.3, 2);
-				camera.shakeS(2, 0.3);
 				tw.createMs(camera.zoom, 1, 700, TElasticEnd);
 			}
 		}
+
+		hxd.Timer.skip();
+
+		// if( dark )
+			// camera.shakeS
 
 		if( dark )
 			Assets.SLIB.dark0(0.5);
@@ -181,7 +227,7 @@ class Game extends Process {
 		if( dark ) {
 			Assets.SLIB.door0(1);
 			for(e in en.Door.ALL)
-				e.setClosed(true);
+				e.setDefaultState();
 		}
 		else
 			delayer.addS("doors", ()->{
@@ -345,6 +391,13 @@ class Game extends Process {
 		// Auto light/dark switch
 		if( en.Torch.any() && !cd.has("autoSwitch") )
 			setDarkness(!dark);
+
+		#if debug
+		if( ca.isKeyboardPressed(K.I) ) {
+			destroy();
+			new Intro(true);
+		}
+		#end
 
 		// Level complete
 		if( hero.isAlive() && !cd.has("levelComplete") ) {
