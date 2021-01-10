@@ -19,7 +19,11 @@ class Vortex extends Entity {
 	override function postUpdate() {
 		super.postUpdate();
 		if( !cd.hasSetS("fx",0.06) )
-			fx.vortex(footX, footY, content==null ? 12 : 5, content==null ? 0x00ff00 : 0x8b95cf);
+			fx.vortex(
+				footX, footY,
+				cd.has("error") ? 9 : content==null ? 12 : 5,
+				cd.has("error") ? 0xff2200 : content==null ? 0x00ff00 : 0x8b95cf
+			);
 		spr.visible = false;
 	}
 
@@ -33,7 +37,7 @@ class Vortex extends Entity {
 
 		if( content!=null ) {
 			var e = new en.Item(cx,cy, content);
-			e.origin = itemOrigin.clone();
+			e.origin = itemOrigin==null ? null : itemOrigin.clone();
 			e.dx = rnd(0.01,0.02,true);
 			e.dy = -0.1;
 			ignoreItem = e;
@@ -53,10 +57,24 @@ class Vortex extends Entity {
 		if( content==null  )
 			for(e in en.Item.ALL)
 				if( e.isAlive() && distCase(e)<=1.6 && e!=ignoreItem && e.cd.has("recentThrow") && !e.isGrabbedByHero() ) {
-					content = e.type;
-					itemOrigin = e.origin.clone();
-					Assets.SLIB.vortexOut1(1);
-					e.destroy();
+					switch e.type {
+						case Ammo:
+						case DiamondDup:
+							cd.setS("error",1);
+
+						case DoorKey, Diamond:
+							if( e.type==Diamond ) {
+								content = DiamondDup;
+								itemOrigin = null;
+							}
+							else {
+								content = e.type;
+								itemOrigin = e.origin.clone();
+							}
+							Assets.SLIB.vortexOut1(1);
+							game.delayer.addS(()->game.popText(centerX, centerY, "Item captured", 0x9ed5ff), 0.4);
+							e.destroy();
+					}
 				}
 	}
 }

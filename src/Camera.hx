@@ -19,15 +19,20 @@ class Camera extends dn.Process {
 		dx = dy = 0;
 	}
 
-	function get_wid() {
+	inline function get_wid() {
 		return M.ceil( Game.ME.w() / Const.SCALE );
 	}
 
-	function get_hei() {
+	inline function get_hei() {
 		return M.ceil( Game.ME.h() / Const.SCALE );
 	}
 
-	public function 	trackTarget(e:Entity, immediate:Bool, xOff=0., yOff=0.) {
+	public inline function isOnScreen(x:Float, y:Float, pad=16) {
+		return x >= -Game.ME.scroller.x/Const.SCALE-pad  &&  x < -Game.ME.scroller.x/Const.SCALE + wid + pad
+			&& y >= -Game.ME.scroller.y/Const.SCALE-pad  &&  y < -Game.ME.scroller.y/Const.SCALE + hei + pad;
+	}
+
+	public function trackTarget(e:Entity, immediate:Bool, xOff=0., yOff=0.) {
 		targetTrackOffX = xOff;
 		targetTrackOffY = yOff;
 		target = e;
@@ -51,8 +56,12 @@ class Camera extends dn.Process {
 
 	var shakePower = 1.0;
 	public function shakeS(t:Float, ?pow=1.0) {
-		cd.setS("shaking", t, false);
+		cd.setS("shaking", t, true);
 		shakePower = pow;
+	}
+
+	public inline function stopShake() {
+		cd.unset("shaking");
 	}
 
 	override function update() {

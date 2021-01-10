@@ -11,6 +11,7 @@ class Hero extends Entity {
 		super(e.cx, e.cy);
 
 		ammo = maxAmmo = 15;
+		bumpFrict = 0.88;
 		ca = Main.ME.controller.createAccess("hero");
 		ca.setLeftDeadZone(0.2);
 		darkMode = Stay;
@@ -29,26 +30,14 @@ class Hero extends Entity {
 		spr.anim.registerStateAnim("heroClimb",11, 2, ()->climbing && ( M.fabs(dy)>=0.05*tmod || cd.has("climbAnim") ) );
 		spr.anim.registerStateAnim("heroClimbIdle",10, ()->climbing);
 
-		spr.anim.registerStateAnim("heroCrouchRun",6, 2, ()->M.fabs(dx)>=0.05*tmod && isCrouching() );
-		spr.anim.registerStateAnim("heroRun",5, 2.5, ()->M.fabs(dx)>=0.05*tmod );
+		spr.anim.registerStateAnim("heroCrouchRun",6, 2, ()->M.fabs(dx)>=0.05/tmod && isCrouching() );
+		spr.anim.registerStateAnim("heroRun",5, 2.5, ()->M.fabs(dx)>=0.05/tmod );
 
 		spr.anim.registerStateAnim("heroIdleGrab",1, ()->!isCrouching() && isGrabbingAnything());
 		spr.anim.registerStateAnim("heroCrouchIdle",0, ()->isCrouching());
 		spr.anim.registerStateAnim("heroIdle",0, ()->!isCrouching());
 
 		spr.anim.registerTransitions(["heroIdle","heroIdleGrab"],["heroRun"],"heroIdleRun", 0.5);
-	}
-
-	override function onDamage(dmg:Int, from:Entity) {
-		super.onDamage(dmg, from);
-		cancelVelocities();
-		if( from!=null )
-			bump(from.dirTo(this)*0.2, -0.2);
-		setSquashX(0.5);
-		lockControlS(0.3);
-		fx.flashBangS(0xff0000,0.2, 1);
-		camera.shakeS(0.5,0.5);
-		hud.invalidate();
 	}
 
 	public function refillAmmo() {
@@ -144,10 +133,10 @@ class Hero extends Entity {
 
 		// Walk
 		if( !controlsLocked() && ca.leftDist() > 0 ) {
-			// if( !climbing )
-				dx += Math.cos( ca.leftAngle() ) * ca.leftDist() * spd * ( 0.4+0.6*cd.getRatio("airControl") ) * tmod;
+			var xPow = Math.cos( ca.leftAngle() );
+			dx += xPow * ca.leftDist() * spd * ( 0.4+0.6*cd.getRatio("airControl") ) * tmod;
 			var old = dir;
-			dir = M.sign( Math.cos(ca.leftAngle()) );
+			dir = M.fabs(xPow)>=0.1 ? M.sign(xPow) : dir;
 			if( old!=dir && !isCrouching() && !climbing )
 				spr.anim.playOverlap("heroTurn", 0.66);
 		}
@@ -215,12 +204,9 @@ class Hero extends Entity {
 			// }
 		}
 
-		// HACK
-		#if debug
-		if( !controlsLocked() && ca.rbPressed() ) {
-			game.setDarkness(!game.dark);
-		}
-		#end
+		// Force darkness
+		if( !game.dark && !controlsLocked() && ca.yPressed() && en.Torch.any() )
+			game.setDarkness(true);
 
 		if( !climbing && !cd.has("climbLock") && !controlsLocked() && ca.leftDist()>0 ) {
 			// Grab ladder up
@@ -285,7 +271,7 @@ class Hero extends Entity {
 		for(e in en.Mob.ALL) {
 			if( e.isAlive() && !e.isOutOfTheGame() && distCaseX(e)<=1 && footY>=e.footY-Const.GRID*1 && footY<=e.footY+Const.GRID*0.5 && !cd.hasSetS("autoAtk",0.1) ) {
 				e.hit(1,hero);
-				bump(-dirTo(e)*rnd(0.03,0.06), 0);
+				bump(-dirTo(e)*rnd(0.02,0.03), 0);
 				e.bump(dirTo(e)*rnd(0.06,0.12), -rnd(0.04,0.08));
 				setSquashY(rnd(0.8,1));
 				spr.anim.play("heroAtkA");

@@ -40,7 +40,7 @@ class Main extends dn.Process {
         });
 
         // Hot reloading (LDtk)
-        hxd.Res.world.world.watch(function() {
+        hxd.Res.world.world_ldtk.watch(function() {
             delayer.cancelById("ldtk");
 
             delayer.addS("ldtk", function() {
@@ -51,6 +51,7 @@ class Main extends dn.Process {
 		#end
 
 		// Assets & data init
+		hxd.snd.Manager.get();
 		Assets.init();
 		new ui.Console(Assets.fontTiny, s);
 		Lang.init("en");
@@ -63,21 +64,23 @@ class Main extends dn.Process {
 		controller.bind(AXIS_LEFT_X_POS, Key.RIGHT, Key.D);
 		controller.bind(AXIS_LEFT_Y_NEG, Key.UP, Key.Z, Key.W);
 		controller.bind(AXIS_LEFT_Y_POS, Key.DOWN, Key.S);
-		controller.bind(X, Key.SPACE, Key.F, Key.E);
-		controller.bind(A, Key.UP, Key.Z, Key.W);
-		controller.bind(SELECT, Key.R);
+		controller.bind(X, Key.SPACE, Key.F, Key.E); // throw item
+		controller.bind(A, Key.UP, Key.Z, Key.W); // jump
+		controller.bind(Y, Key.X, Key.TAB, Key.ENTER); // darkness
+		controller.bind(SELECT, Key.R); // Restart
 		controller.bind(START, Key.N);
+
+		var f = new dn.heaps.filter.OverlayTexture(Deep);
+		f.alpha = 0.3;
+		f.autoUpdateSize = ()->return Const.SCALE;
+		Boot.ME.s2d.filter = f;
 
 		// Start
 		#if js
 			new dn.heaps.GameFocusHelper(Boot.ME.s2d, Assets.fontMedium);
-			delayer.addF( startIntro, 1 );
+			delayer.addF( startGame, 1 );
 		#else
-			#if debug
 			startGame();
-			#else
-			startIntro();
-			#end
 		#end
 	}
 
@@ -100,11 +103,7 @@ class Main extends dn.Process {
 		super.onResize();
 
 		// Auto scaling
-		if( Const.AUTO_SCALE_TARGET_WID>0 )
-			Const.SCALE = M.ceil( w()/Const.AUTO_SCALE_TARGET_WID );
-		else if( Const.AUTO_SCALE_TARGET_HEI>0 )
-			Const.SCALE = M.ceil( h()/Const.AUTO_SCALE_TARGET_HEI );
-
+		Const.SCALE = dn.heaps.Scaler.bestFit_i(350,200);
 		Const.UI_SCALE = Const.SCALE;
 	}
 
